@@ -1,10 +1,10 @@
 ﻿@model List<CartItem>
 
 @{
-	ViewData["Title"] = "Create";
+	ViewData["Title"] = "Place order";
 }
 
-<h1>Place Order</h1>
+<h1 class="center">Place order</h1>
 
 <hr />
 <div class="container">
@@ -32,7 +32,7 @@
 		<h5 class="card-header">Total</h5>
 		<div class="card-body">
 			<h5 class="card-title">@ViewBag.total.ToString("C1")</h5>
-			<a asp-action="PlaceOrderConfirmed" class="btn btn-success">Confirm</a>
+			<a asp-action="PlaceOrderConfirmed" class="btn btn-success width-200-px">Confirm</a>
 		</div>
 	</div>
 </div>

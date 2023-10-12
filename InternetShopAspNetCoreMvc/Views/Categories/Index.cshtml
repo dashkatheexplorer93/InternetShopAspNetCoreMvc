@@ -1,10 +1,13 @@
 ﻿@model IEnumerable<Category>
 
 @{
-	ViewData["Title"] = "Index";
+	ViewData["Title"] = "Categories";
 }
 
-<h1>Index</h1>
+<div class="center">
+	<h1>Categories</h1>
+	<a class="btn btn-dark" asp-area="" asp-controller="Categories" asp-action="Manage">Manage categories</a>
+</div>
 
 <table class="table">
 	<thead>

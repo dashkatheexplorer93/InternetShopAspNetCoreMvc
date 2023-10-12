@@ -66,7 +66,7 @@ namespace InternetShopAspNetCoreMvc.Repositories
 
 		public string GetImageName(int id)
 		{
-			return _context.Products.FirstOrDefault(x => x.Id==id)?.Name;
+			return _context.Products.FirstOrDefault(x => x.Id==id)?.Image;
 		}
 	}
 }

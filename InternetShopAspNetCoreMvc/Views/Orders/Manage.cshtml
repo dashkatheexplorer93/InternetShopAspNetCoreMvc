@@ -4,11 +4,8 @@
 	ViewData["Title"] = "Manage";
 }
 
-<h1>Manage</h1>
+<h1 class="center">Manage orders</h1>
 
-<p>
-	<a asp-action="Create">Create New</a>
-</p>
 <table class="table">
 	<thead>
 		<tr>
@@ -39,10 +36,8 @@
 					@Html.DisplayFor(modelItem => item.User.Fullname)
 				</td>
 				<td>
-					<form asp-action="AdminConfirmOrder" asp-route-id="@item.Id">
-						<a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-						<input class="btn btn-primary" type="submit" value="Start Shipping">
-					</form>
+					<a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
+					<a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
 				</td>
 			</tr>
 		}

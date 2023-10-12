@@ -10,7 +10,6 @@ namespace InternetShopAspNetCoreMvc.Data.Configuration
         {
             builder.HasKey(o => o.Id);
             builder.Property(o => o.Id).ValueGeneratedOnAdd();
-            //builder.Property(o => o.Amount).IsRequired().HasColumnType("INT");
             builder.Property(o => o.Amount).IsRequired().HasColumnType("decimal(18,2)");
             builder.Property(o => o.CreatedAt).HasColumnType("datetime");
 

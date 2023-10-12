@@ -1,4 +1,5 @@
-﻿using InternetShopAspNetCoreMvc.Models;
+﻿using AspNetCoreHero.ToastNotification.Abstractions;
+using InternetShopAspNetCoreMvc.Models;
 using InternetShopAspNetCoreMvc.Repositories.Interfaces;
 using InternetShopAspNetCoreMvc.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -8,10 +9,12 @@ namespace InternetShopAspNetCoreMvc.Controllers
 	public class CategoriesController : Controller
 	{
 		private readonly ICategoryRepository _categoryRepository;
+        private readonly INotyfService _notifyService;
 
-		public CategoriesController(ICategoryRepository CategoryRepository)
+        public CategoriesController(ICategoryRepository CategoryRepository, INotyfService notifyService)
 		{
 			_categoryRepository = CategoryRepository;
+			_notifyService = notifyService;
 		}
 
 		public IActionResult Index()
@@ -22,18 +25,6 @@ namespace InternetShopAspNetCoreMvc.Controllers
 		public IActionResult Manage()
 		{
 			return View(_categoryRepository.GetAll());
-		}
-
-		public IActionResult Details(int id)
-		{
-			var category = _categoryRepository.GetById(id);
-
-			if (category != null)
-			{
-				return View(category);
-			}
-
-			return View("doesNotExist");
 		}
 
 		public IActionResult Create()
@@ -54,8 +45,9 @@ namespace InternetShopAspNetCoreMvc.Controllers
 					CreatedAt = DateTime.Now,
 				};
 				_categoryRepository.AddCategory(category);
+                _notifyService.Success("Created category!");
 
-				return View(categoryVM);
+                return View(categoryVM);
 			}
 
 			return View(ModelState);
@@ -68,12 +60,13 @@ namespace InternetShopAspNetCoreMvc.Controllers
 
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public IActionResult Edit(int id, Category category)
+		public IActionResult Edit(Category category)
 		{
 			if (ModelState.IsValid)
 			{
 				_categoryRepository.Edit(category);
-			}
+                _notifyService.Success("Changed category!");
+            }
 
 			return View(category);
 		}
@@ -87,16 +80,17 @@ namespace InternetShopAspNetCoreMvc.Controllers
 				return View(category);
 			}
 
-			return View("doesNotExist");
-		}
+            return RedirectToAction("index");
+        }
 
 		[HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
 		public IActionResult DeleteConfirmed(int id)
 		{
 			_categoryRepository.Delete(id);
+            _notifyService.Success("Deleted category!");
 
-			return RedirectToAction("index");
+            return RedirectToAction("index");
 		}
 	
 		public IActionResult CategoryProducts(int id)

@@ -1,4 +1,5 @@
-﻿using InternetShopAspNetCoreMvc.Models;
+﻿using AspNetCoreHero.ToastNotification.Abstractions;
+using InternetShopAspNetCoreMvc.Models;
 using InternetShopAspNetCoreMvc.Repositories.Interfaces;
 using InternetShopAspNetCoreMvc.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -8,42 +9,33 @@ namespace InternetShopAspNetCoreMvc.Controllers
 {
     public class ProductsController : Controller
     {
-        private readonly IProductRepository productRepository;
-        private readonly ICategoryRepository categoryRepository;
-        private readonly IWebHostEnvironment webHostEnvironment;
+        private readonly IProductRepository _productRepository;
+        private readonly ICategoryRepository _categoryRepository;
+        private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly INotyfService _notifyService;
         private const int UserId = 1;
 
         public ProductsController(
             IProductRepository productRepository,
             ICategoryRepository categoryRepository,
-            IWebHostEnvironment webHostEnvironment
-            )
+            IWebHostEnvironment webHostEnvironment,
+            INotyfService notifyService)
         {
-            this.productRepository = productRepository;
-            this.categoryRepository = categoryRepository;
-            this.webHostEnvironment = webHostEnvironment;
+            _productRepository = productRepository;
+            _categoryRepository = categoryRepository;
+            _webHostEnvironment = webHostEnvironment;
+            _notifyService = notifyService;
         }
 
         public IActionResult Index()
         {
-            return View(productRepository.GetAll());
+            return View(_productRepository.GetAll());
         }
 
-        public IActionResult Details(int id)
+		public IActionResult Create()
         {
-            var product = productRepository.GetById(id);
+            ViewData["CategoryId"] = new SelectList(_categoryRepository.GetAll(), "Id", "Name");
 
-            if (product != null)
-            {
-                return View(product);
-            }
-
-            return View("doesNotExist");
-        }
-
-        public IActionResult Create()
-        {
-            ViewData["CategoryId"] = new SelectList(categoryRepository.GetAll(), "Id", "Name");
             return View();
         }
 
@@ -62,34 +54,42 @@ namespace InternetShopAspNetCoreMvc.Controllers
                     Price = productVM.Price,
                     CategoryId = productVM.CategoryId,
                 };
-                productRepository.Add(newProduct);
+                _productRepository.Add(newProduct);
+                _notifyService.Success("Product created!");
+
                 return RedirectToAction("Index");
             }
-            ViewData["CategoryId"] = new SelectList(categoryRepository.GetAll(), "Id", "Name", productVM.CategoryId);
+
+            ViewData["CategoryId"] = new SelectList(_categoryRepository.GetAll(), "Id", "Name", productVM.CategoryId);
+
             return View(productVM);
         }
 
         public IActionResult Manage()
         {
-            var products = productRepository.GetAll();
-            return View(products);
+            return View(_productRepository.GetAll());
         }
 
         public IActionResult Edit(int id)
         {
-            var product = productRepository.GetById(id);
+            var product = _productRepository.GetById(id);
+
             if (product != null)
             {
                 var editProductVM = EditProductViewModel.FromProduct(product);
-                ViewData["CategoryId"] = new SelectList(categoryRepository.GetAll(), "Id", "Name", product.CategoryId);
-                return View(editProductVM);
+                ViewData["CategoryId"] = new SelectList(_categoryRepository.GetAll(), "Id", "Name", product.CategoryId);
+
+				return View(editProductVM);
             }
-            return View("doesNotExist");
-        }
+
+			_notifyService.Error("Product not found!");
+
+			return RedirectToAction("Index");
+		}
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Edit(int id, EditProductViewModel productVM)
+        public IActionResult Edit(EditProductViewModel productVM)
         {
             if (ModelState.IsValid)
             {
@@ -102,72 +102,88 @@ namespace InternetShopAspNetCoreMvc.Controllers
                     Price = productVM.Price,
                     CreatedAt = productVM.CreatedAt,
                 };
+
                 if (productVM.Image == null)
                 {
-                    editedProduct.Image = productRepository.GetImageName(productVM.Id);
+                    editedProduct.Image = _productRepository.GetImageName(productVM.Id);
                 }
                 else
                 {
-                    var imageName = productRepository.GetImageName(productVM.Id);
+                    var imageName = _productRepository.GetImageName(productVM.Id);
+
                     if (!imageName.Equals("no-image.jpg"))
                     {
-                        System.IO.File.Delete(Path.Combine(webHostEnvironment.WebRootPath, "images", "Products", imageName));
+                        System.IO.File.Delete(Path.Combine(_webHostEnvironment.WebRootPath, "images", "Products", imageName));
                     }
+
                     editedProduct.Image = UploadedFile(productVM);
                 }
-                productRepository.Edit(editedProduct);
+                _productRepository.Edit(editedProduct);
+                _notifyService.Success("Product changed!");
+
                 return RedirectToAction("Index");
             }
-            ViewData["CategoryId"] = new SelectList(categoryRepository.GetAll(), "Id", "Name", productVM.CategoryId);
+
+            ViewData["CategoryId"] = new SelectList(_categoryRepository.GetAll(), "Id", "Name", productVM.CategoryId);
+
             return View(productVM);
         }
 
-
-
-        // GET: Products/Delete/5
         public IActionResult Delete(int id)
         {
-            var product = productRepository.GetById(id);
+            var product = _productRepository.GetById(id);
+
             if (product != null)
             {
                 return View(product);
             }
-            return View("doesNotExist");
+
+            _notifyService.Error("Product not found!");
+
+            return RedirectToAction("Index");
         }
 
-        // POST: Products/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public IActionResult DeleteConfirmed(int id)
         {
-            var product = productRepository.GetById(id);
-            if (product != null)
+            try
             {
-                if (!product.Image.Equals("no-image.jpg"))
+                var product = _productRepository.GetById(id);
+
+                if (product != null)
                 {
-                    System.IO.File.Delete(Path.Combine(webHostEnvironment.WebRootPath, "images", "Products", product.Image));
+                    if (!product.Image.Equals("no-image.jpg"))
+                    {
+                        System.IO.File.Delete(Path.Combine(_webHostEnvironment.WebRootPath, "images", "Products", product.Image));
+                    }
+
+                    _productRepository.Delete(id);
+                    _notifyService.Success("Product deleted!");
                 }
-                productRepository.Delete(id);
             }
+            catch (Exception)
+            {
+                _notifyService.Error("Unable to delete product!");
+            }
+
             return RedirectToAction(nameof(Index));
         }
 
         private string UploadedFile(IProductViewModelImage model)
         {
-            string uniqueFileName = Path.Combine(webHostEnvironment.WebRootPath, "images", "no-image.jpg");
+            string uniqueFileName = Path.Combine(_webHostEnvironment.WebRootPath, "images", "no-image.jpg");
 
             if (model.Image != null)
             {
-                string uploadsFolder = Path.Combine(webHostEnvironment.WebRootPath, "images", "Products");
+                string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "Products");
                 uniqueFileName = Guid.NewGuid().ToString() + "_" + model.Image.FileName;
                 string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    model.Image.CopyTo(fileStream);
-                }
+                using var fileStream = new FileStream(filePath, FileMode.Create);
+                model.Image.CopyTo(fileStream);
             }
+
             return uniqueFileName;
         }
     }
 }
-

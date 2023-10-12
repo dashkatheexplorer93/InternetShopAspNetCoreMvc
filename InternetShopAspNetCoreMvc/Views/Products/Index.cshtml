@@ -1,20 +1,21 @@
 ﻿@model IEnumerable<Product>
 
 @{
-	ViewData["Title"] = "Index";
+	ViewData["Title"] = "Products";
 }
 
-<h1>Products</h1>
-	<a class="btn btn-info" asp-area="" asp-controller="Products" asp-action="Create">Create</a>
+<div class="center">
+	<h1>Products</h1>
+	<a class="btn btn-dark" asp-area="" asp-controller="Products" asp-action="Manage">Manage products</a>
+</div>
 <hr />
-
 
 <div class="d-flex justify-content-around flex-wrap align-content-around">
 
 	@foreach (var product in Model)
 	{
 		var image = $"~/images/Products/{product.Image}";
-		<div class="card" style="width:300px">
+		<div class="card m-1" style="width:300px">
 			<img class="card-img-top" src=@Url.Content(image) alt="Card image">
 			<div class="card-body">
 				<h4 class="card-title">@product.Name</h4>

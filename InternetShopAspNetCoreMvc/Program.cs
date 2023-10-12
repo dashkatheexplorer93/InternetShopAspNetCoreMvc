@@ -2,6 +2,8 @@ using InternetShopAspNetCoreMvc.Data;
 using InternetShopAspNetCoreMvc.Repositories.Interfaces;
 using InternetShopAspNetCoreMvc.Repositories;
 using Microsoft.EntityFrameworkCore;
+using AspNetCoreHero.ToastNotification;
+using AspNetCoreHero.ToastNotification.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,16 +16,32 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ICartRepository, CartRepository>();
 builder.Services.AddScoped<IOrdersRepository, OrdersRepository>();
+builder.Services.AddNotyf(config => { config.DurationInSeconds = 5; config.IsDismissable = true; config.Position = NotyfPosition.TopRight; });
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
-	app.UseExceptionHandler("/Home/Error");
+	//app.UseExceptionHandler("/Products/Error");
+	app.UseDeveloperExceptionPage();
 	// The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
 	app.UseHsts();
 }
+else
+{
+	app.UseDeveloperExceptionPage();
+}
+
+app.Use(async (context, next) =>
+{
+	await next();
+	if (context.Response.StatusCode == 404)
+	{
+		context.Request.Path = "/PageNotFound";
+		await next();
+	}
+});
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
@@ -34,6 +52,8 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
 	name: "default",
-	pattern: "{controller=Home}/{action=Index}/{id?}");
+	pattern: "{controller=Products}/{action=Index}");
+
+app.UseNotyf();
 
 app.Run();
