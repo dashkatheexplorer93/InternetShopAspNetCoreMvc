@@ -4,6 +4,7 @@ using InternetShopAspNetCoreMvc.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InternetShopAspNetCoreMvc.Migrations
 {
     [DbContext(typeof(InternetShopDbContext))]
-    partial class InternetShopDbContextModelSnapshot : ModelSnapshot
+    [Migration("20231012182907_added-seed-with-users1")]
+    partial class addedseedwithusers1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

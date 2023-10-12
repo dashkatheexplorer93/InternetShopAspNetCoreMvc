@@ -25,7 +25,7 @@ namespace InternetShopAspNetCoreMvc.Repositories
             }
             else
             {
-                var product = _context.Products.AsNoTracking().FirstOrDefault(c => c.Id == item.ProductId);
+                var product = _context.Products.FirstOrDefault(c => c.Id == item.ProductId);
                 item.Product = product;
 
                 _context.CartItems.Add(item);
@@ -57,11 +57,11 @@ namespace InternetShopAspNetCoreMvc.Repositories
 
         public void EditCartItems(CartItem item)
         {
-            var existingCartItem = _context.CartItems.FirstOrDefault(c => c.Id == item.Id);
+            var itemToEdit = _context.CartItems.FirstOrDefault(c => c.Id == item.Id);
 
-            if (existingCartItem != null)
+            if (itemToEdit != null)
             {
-                existingCartItem.Quantity = item.Quantity;
+                itemToEdit.Quantity = item.Quantity;
                 _context.SaveChanges();
             }
         }
