@@ -19,12 +19,29 @@ namespace InternetShopAspNetCoreMvc.Controllers
 
 		public IActionResult Index()
 		{
-			return View(_categoryRepository.GetAll());
+			try
+			{
+                //throw new NotImplementedException("test");
+                return View(_categoryRepository.GetAll());
+            }
+			catch (Exception)
+			{
+				_notifyService.Error("An error occurred!");
+                return RedirectToAction("Index", "Products");
+            }
 		}
 
 		public IActionResult Manage()
 		{
-			return View(_categoryRepository.GetAll());
+            try
+            {
+                return View(_categoryRepository.GetAll());
+            }
+            catch (Exception)
+            {
+                _notifyService.Error("An error occurred!");
+                return RedirectToAction("Index", "Products");
+            }
 		}
 
 		public IActionResult Create()
@@ -36,21 +53,29 @@ namespace InternetShopAspNetCoreMvc.Controllers
 		[ValidateAntiForgeryToken]
 		public IActionResult Create(CategoryViewModel categoryVM)
 		{
-			if (ModelState.IsValid)
+			try
 			{
-				var category = new Category
-				{
-					Name = categoryVM.Name,
-					Description = categoryVM.Description,
-					CreatedAt = DateTime.Now,
-				};
-				_categoryRepository.AddCategory(category);
-                _notifyService.Success("Created category!");
+                if (ModelState.IsValid)
+                {
+                    var category = new Category
+                    {
+                        Name = categoryVM.Name,
+                        Description = categoryVM.Description,
+                        CreatedAt = DateTime.Now,
+                    };
+                    _categoryRepository.AddCategory(category);
+                    _notifyService.Success("Created category!");
 
-                return View(categoryVM);
-			}
+                    return RedirectToAction("Index");
+                }
 
-			return View(ModelState);
+                return View(ModelState);
+            }
+			catch (Exception)
+			{
+                _notifyService.Error("An error occurred!");
+                return RedirectToAction("Index");
+            }
 		}
 
 		public IActionResult Edit(int id)
@@ -62,23 +87,31 @@ namespace InternetShopAspNetCoreMvc.Controllers
 		[ValidateAntiForgeryToken]
 		public IActionResult Edit(Category category)
 		{
-			if (ModelState.IsValid)
+			try
 			{
-				_categoryRepository.Edit(category);
-                _notifyService.Success("Changed category!");
-            }
+                if (ModelState.IsValid)
+                {
+                    _categoryRepository.Edit(category);
+                    _notifyService.Success("Changed category!");
+                }
 
-			return View(category);
+                return View(category);
+            }
+			catch (Exception)
+			{
+                _notifyService.Error("An error occurred!");
+                return RedirectToAction("Index");
+            }
 		}
 
 		public IActionResult Delete(int? id)
 		{
-			var category = _categoryRepository.GetById(id.Value);
+            var category = _categoryRepository.GetById(id.Value);
 
-			if(category != null)
-			{
-				return View(category);
-			}
+            if (category != null)
+            {
+                return View(category);
+            }
 
             return RedirectToAction("index");
         }
@@ -87,10 +120,18 @@ namespace InternetShopAspNetCoreMvc.Controllers
         [ValidateAntiForgeryToken]
 		public IActionResult DeleteConfirmed(int id)
 		{
-			_categoryRepository.Delete(id);
-            _notifyService.Success("Deleted category!");
+			try
+			{
+                _categoryRepository.Delete(id);
+                _notifyService.Success("Deleted category!");
 
-            return RedirectToAction("index");
+                return RedirectToAction("index");
+            }
+            catch (Exception)
+            {
+                _notifyService.Error("An error occurred!");
+                return RedirectToAction("Index");
+            }
 		}
 	
 		public IActionResult CategoryProducts(int id)
