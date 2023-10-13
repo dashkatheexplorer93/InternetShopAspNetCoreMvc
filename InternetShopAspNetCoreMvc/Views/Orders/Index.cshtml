@@ -28,7 +28,7 @@
     @foreach (var item in Model) {
         <tr>
             <td>
-                @Html.DisplayFor(modelItem => item.OrderDetails)
+                <p>@item.Amount.ToString("C0")</p>
             </td>
             <td>
                 @Html.DisplayFor(modelItem => item.CreatedAt)

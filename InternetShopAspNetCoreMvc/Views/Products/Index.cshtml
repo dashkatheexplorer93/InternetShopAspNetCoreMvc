@@ -15,8 +15,8 @@
 	@foreach (var product in Model)
 	{
 		var image = $"~/images/Products/{product.Image}";
-		<div class="card m-1" style="width:300px">
-			<img class="card-img-top" src=@Url.Content(image) alt="Card image">
+		<div class="card m-1" style="width:300px; height:500px">
+			<img class="card-img-top" src=@Url.Content(image) alt="Card image" style="height:300px">
 			<div class="card-body">
 				<h4 class="card-title">@product.Name</h4>
 				<h5 class="card-title">@product.Price.ToString("C0")</h5>
