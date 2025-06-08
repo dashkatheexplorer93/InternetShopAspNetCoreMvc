@@ -26,4 +26,10 @@
     <ProjectReference Include="..\InternetShopAspNetCoreMvc.Service\InternetShopAspNetCoreMvc.Service.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Remove="wwwroot\images\Products\15728a62-5e93-4f59-b878-f519e0ff0fea_FILE_842.jpg" />
+    <Content Remove="wwwroot\images\Products\a4b3f994-199b-4a05-b08f-3c481b4169c7_499515605_1000282778931715_5043844460395883157_n.jpg" />
+    <Content Remove="wwwroot\images\Products\0bfc4b83-0c26-4046-a7ea-c10d42307380_FILE_842.jpg" />
+  </ItemGroup>
+
 </Project>

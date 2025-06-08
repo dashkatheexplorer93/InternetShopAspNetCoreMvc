@@ -2,52 +2,101 @@
 
 @{
     ViewData["Title"] = "Create";
+    var categories = ViewBag.CategoryId as SelectList;
+    var hasCategories = categories != null && categories.Any();
 }
 <h1 class="center">Create Product</h1>
 <hr />
 
-<div class="row">
-    <div class="col-md-16">
-        <form asp-action="Create" enctype="multipart/form-data" class="justify-content-center">
-            <div asp-validation-summary="All" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="Name" class="control-label"></label>
-                <input asp-for="Name" class="form-control" />
-                <span asp-validation-for="Name" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Description" class="control-label"></label>
-                <input asp-for="Description" class="form-control" />
-                <span asp-validation-for="Description" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Price" class="control-label"></label>
-                <input asp-for="Price" class="form-control" />
-                <span asp-validation-for="Price" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Image" class="control-label"></label>
-                <input asp-for="Image" class="form-control" />
-                <span asp-validation-for="Image" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="CategoryId" class="control-label"></label>
-                <select asp-for="CategoryId" class="form-control" asp-items="ViewBag.CategoryId">
-                    <option >-- select --</option>
-                </select>
-            </div>
-            <div class="form-group center m-3">
-                <input type="submit" value="Create" class="btn btn-primary width-200-px" />
-            </div>
-            <div class="form-group center m-3">
-                <a class="btn btn-secondary width-200-px" asp-action="Index">Back to List</a>
-            </div>
-        </form>
+@if (!hasCategories)
+{
+    <div class="alert alert-warning" role="alert">
+        <h4 class="alert-heading">No Categories Available!</h4>
+        <p>You need to create at least one category before you can add products.</p>
+        <hr>
+        <p class="mb-0">
+            <a asp-controller="Categories" asp-action="Create" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Category
+            </a>
+        </p>
     </div>
-</div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-16">
+            <form asp-action="Create" enctype="multipart/form-data" class="justify-content-center">
+                <div class="form-group">
+                    <label asp-for="Name" class="control-label"></label>
+                    <input asp-for="Name" class="form-control"/>
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Description" class="control-label"></label>
+                    <input asp-for="Description" class="form-control"/>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Price" class="control-label"></label>
+                    <input asp-for="Price" class="form-control"/>
+                    <span asp-validation-for="Price" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Image" class="control-label"></label>
+                    <input asp-for="Image" class="form-control" type="file" 
+                           accept="image/jpeg,image/png,image/gif"
+                           onchange="validateImage(this)" />
+                    <span asp-validation-for="Image" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="CategoryId" class="control-label"></label>
+                    <select asp-for="CategoryId" class="form-control" asp-items="ViewBag.CategoryId">
+                        <option >-- select --</option>
+                    </select>
+                </div>
+                <div class="form-group center m-3">
+                    <input type="submit" value="Create" class="btn btn-primary width-200-px"/>
+                </div>
+                <div class="form-group center m-3">
+                    <a class="btn btn-secondary width-200-px" asp-action="Index">Back to List</a>
+                </div>
+            </form>
+        </div>
+    </div>
+}
 
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
+        
+        <script>
+        function validateImage(input) {
+            const file = input.files[0];
+            const errorSpan = input.nextElementSibling;
+            
+            // Reset the input and error message if no file is selected
+            if (!file) {
+                errorSpan.textContent = '';
+                return;
+            }
+            
+            // Check file type
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+            if (!allowedTypes.includes(file.type)) {
+                errorSpan.textContent = 'Please select an image file (JPEG, PNG, or GIF)';
+                input.value = ''; // Clear the input
+                return;
+            }
+            
+            // Check file size (5MB = 5 * 1024 * 1024 bytes)
+            if (file.size > 5 * 1024 * 1024) {
+                errorSpan.textContent = 'Image size must be less than 5MB';
+                input.value = ''; // Clear the input
+                return;
+            }
+            
+            errorSpan.textContent = ''; // Clear any error message if validation passes
+        }
+    </script>
     }
 }

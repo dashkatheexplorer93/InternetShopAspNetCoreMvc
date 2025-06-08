@@ -13,5 +13,9 @@ namespace InternetShopAspNetCoreMvc.Data.Interfaces
 		Task<List<Order?>> GetAllOrdersAsync();
 
 		Task ConfirmOrderAsync(int userId);
+		
+		Task UpdateAsync(Order order);
+		
+		Task<bool> DeleteOrderAsync(int orderId);
 	}
 }

@@ -8,7 +8,6 @@ namespace InternetShopAspNetCoreMvc.Data.Repositories
 	public class OrdersRepository(InternetShopDbContext context, ILogger<OrdersRepository> logger) : IOrdersRepository
 	{
 		private readonly InternetShopDbContext _context = context ?? throw new ArgumentNullException(nameof(context));
-		private readonly ILogger<OrdersRepository> _logger = logger;
 
 		public async Task ConfirmOrderAsync(int userId)
 		{
@@ -26,7 +25,7 @@ namespace InternetShopAspNetCoreMvc.Data.Repositories
 			catch (Exception ex) 
 			{
 				await transaction.RollbackAsync();
-				_logger.LogError(ex, "Error confirming order for user {UserId}", userId);
+				logger.LogError(ex, "Error confirming order for user {UserId}", userId);
 				throw new OrderProcessingException("Failed to process order", ex);
 			}
         }
@@ -63,46 +62,93 @@ namespace InternetShopAspNetCoreMvc.Data.Repositories
 				.Where(x => x.UserId == userId)
 				.ToListAsync();
         }
+		
+		public async Task UpdateAsync(Order order)
+		{
+            ArgumentNullException.ThrowIfNull(order);
+
+            var existingOrder = await _context.Orders
+				.Include(o => o.OrderDetails)
+				.FirstOrDefaultAsync(o => o.Id == order.Id);
+
+			if (existingOrder == null)
+				throw new InvalidOperationException($"Order with ID {order.Id} not found");
+			
+			existingOrder.Amount = order.Amount;
+
+			try
+			{
+				await _context.SaveChangesAsync();
+			}
+			catch (DbUpdateConcurrencyException)
+			{
+				if (!await OrderExists(order.Id))
+					throw new InvalidOperationException($"Order with ID {order.Id} no longer exists");
+				throw;
+			}
+		}
+
+
+		public async Task<bool> DeleteOrderAsync(int orderId)
+		{
+			var order = await _context.Orders
+				.Include(o => o.OrderDetails)
+				.FirstOrDefaultAsync(o => o.Id == orderId);
+
+			if (order == null)
+				return false;
+
+			_context.OrderDetails.RemoveRange(order.OrderDetails);
+			_context.Orders.Remove(order);
+
+			await _context.SaveChangesAsync();
+			return true;
+		}
 
 		private async Task<List<CartItem>> GetCartItemsAsync(int userId)
-		{
-			return await _context.CartItems
-				.Include(c => c.Product)
-				.Where(c => c.UserId == userId)
-				.ToListAsync();
-		}
-
-		private async Task<Order?> CreateOrderFromCartAsync(int userId, List<CartItem> cartItems)
-		{
-			var totalAmount = cartItems.Sum(c => c.Product.Price * c.Quantity);
-			var order = new Order
 			{
-				UserId = userId,
-				CreatedAt = DateTime.UtcNow,
-				Amount = totalAmount
-			};
+				return await _context.CartItems
+					.Include(c => c.Product)
+					.Where(c => c.UserId == userId)
+					.ToListAsync();
+			}
 
-			_context.Orders.Add(order);
-			await _context.SaveChangesAsync();
+			private async Task<Order?> CreateOrderFromCartAsync(int userId, List<CartItem> cartItems)
+			{
+				var totalAmount = cartItems.Sum(c => c.Product.Price * c.Quantity);
+				var order = new Order
+				{
+					UserId = userId,
+					CreatedAt = DateTime.UtcNow,
+					Amount = totalAmount
+				};
+
+				_context.Orders.Add(order);
+				await _context.SaveChangesAsync();
 			
-			return order;
-		}
+				return order;
+			}
 
-		private async Task CreateOrderDetailsAsync(Order? order, List<CartItem> cartItems)
-		{
-			var orderDetails = cartItems.Select(item => new OrderDetail
+			private async Task CreateOrderDetailsAsync(Order? order, List<CartItem> cartItems)
 			{
-				OrderId = order.Id,
-				ProductId = item.ProductId,
-				Price = item.Product.Price,
-				Quantity = item.Quantity,
-				Total = item.Quantity * item.Product.Price
-			});
+				var orderDetails = cartItems.Select(item => new OrderDetail
+				{
+					OrderId = order.Id,
+					ProductId = item.ProductId,
+					Price = item.Product.Price,
+					Quantity = item.Quantity,
+					Total = item.Quantity * item.Product.Price
+				});
 
-			await _context.OrderDetails.AddRangeAsync(orderDetails);
-			_context.CartItems.RemoveRange(cartItems);
-			await _context.SaveChangesAsync();
-		}
+				await _context.OrderDetails.AddRangeAsync(orderDetails);
+				_context.CartItems.RemoveRange(cartItems);
+				await _context.SaveChangesAsync();
+			}
+			
+			private async Task<bool> OrderExists(int id)
+			{
+				return await _context.Orders.AnyAsync(o => o.Id == id);
+			}
 	}
 	
 	public class OrderProcessingException(string message, Exception innerException) : Exception(message, innerException);

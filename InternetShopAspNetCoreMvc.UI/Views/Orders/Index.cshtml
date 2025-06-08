@@ -1,0 +1,67 @@
+﻿@model IEnumerable<Order>
+
+@{
+    ViewData["Title"] = "Orders";
+}
+
+@if (!Model.Any())
+{
+    <div class="center">
+        <h1>Orders</h1>
+    </div>
+    
+    <div class="text-center my-5">
+        <div class="alert alert-info p-4 shadow-sm rounded" style="max-width: 600px; margin: 0 auto;">
+            <i class="fas fa-shopping-cart fa-2x mb-3"></i>
+            <h4 class="alert-heading mb-3">Oh no, your order list is empty!</h4>
+            <p class="mb-3">You don't have any orders yet. Time to explore our amazing products!</p>
+            <hr>
+            <a asp-controller="Products" asp-action="Index" class="btn btn-primary">
+                Go to Products Page
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="center">
+        <h1>Orders</h1>
+        <a class="btn btn-dark" asp-area="" asp-controller="Orders" asp-action="Manage">Manage orders</a>
+    </div>
+    
+    <table class="table">
+        <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.Amount)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CreatedAt)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.User)
+            </th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    <p>@item.Amount.ToString("C0")</p>
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.CreatedAt)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.User.Id)
+                </td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-primary">Details</a>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

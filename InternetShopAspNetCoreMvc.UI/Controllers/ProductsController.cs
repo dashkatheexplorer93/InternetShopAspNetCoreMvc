@@ -7,35 +7,27 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace InternetShopAspNetCoreMvc.UI.Controllers
 {
-    public class ProductsController : Controller
+    public class ProductsController(
+        IProductRepository productRepository,
+        ICategoryRepository categoryRepository,
+        IWebHostEnvironment webHostEnvironment,
+        INotyfService notifyService)
+        : Controller
     {
-        private readonly IProductRepository _productRepository;
-        private readonly ICategoryRepository _categoryRepository;
-        private readonly IWebHostEnvironment _webHostEnvironment;
-        private readonly INotyfService _notifyService;
         private const int UserId = 1;
 
-        public ProductsController(
-            IProductRepository productRepository,
-            ICategoryRepository categoryRepository,
-            IWebHostEnvironment webHostEnvironment,
-            INotyfService notifyService)
-        {
-            _productRepository = productRepository;
-            _categoryRepository = categoryRepository;
-            _webHostEnvironment = webHostEnvironment;
-            _notifyService = notifyService;
-        }
-
-        public async Task<IActionResult> Index()
-        {
-            return View(await _productRepository.GetAllAsync());
-        }
+        public async Task<IActionResult> Index() => View(await productRepository.GetAllAsync());
 
 		public async Task<IActionResult> Create()
         {
-            ViewData["CategoryId"] = new SelectList(await _categoryRepository.GetAllAsync(), "Id", "Name");
+            var categories = await categoryRepository.GetAllAsync();
+            if (!categories.Any())
+            {
+                notifyService.Warning("You need to create at least one category before adding products.");
+                return RedirectToAction("Create", "Categories");
+            }
 
+            await PopulateCategoryDropdown();
             return View();
         }
 
@@ -43,45 +35,34 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreateProductViewModel productVM)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                var newProduct = new Product
-                {
-                    Name = productVM.Name,
-                    Description = productVM.Description,
-                    CreatedAt = DateTime.Now,
-                    Image = UploadedFile(productVM),
-                    Price = productVM.Price,
-                    CategoryId = productVM.CategoryId,
-                };
-                _productRepository.AddAsync(newProduct);
-                _notifyService.Success("Product created!");
-
-                return RedirectToAction("Index");
+                await PopulateCategoryDropdown(productVM.CategoryId);
+                return View(productVM);
             }
 
-            ViewData["CategoryId"] = new SelectList(await _categoryRepository.GetAllAsync(), "Id", "Name", productVM.CategoryId);
+            var newProduct = MapToProduct(productVM);
+            await productRepository.AddAsync(newProduct);
+            notifyService.Success("Product created successfully!");
+        
+            return RedirectToAction(nameof(Index));
 
-            return View(productVM);
         }
 
-        public async Task<IActionResult> Manage()
-        {
-            return View(await _productRepository.GetAllAsync());
-        }
+        public async Task<IActionResult> Manage() => View(await productRepository.GetAllAsync());
 
         public async Task<IActionResult> Edit(int id)
         {
-            var product = await _productRepository.GetByIdAsync(id);
+            var product = await productRepository.GetByIdAsync(id);
             
             if (product == null)
             {
-                _notifyService.Error("Product not found!");
+                notifyService.Error("Product not found!");
                 return RedirectToAction("Index");
             }
             
             var editProductVM = EditProductViewModel.FromProduct(product);
-            ViewData["CategoryId"] = new SelectList(await _categoryRepository.GetAllAsync(), "Id", "Name", product.CategoryId);
+            await PopulateCategoryDropdown(editProductVM.CategoryId);
             return View(editProductVM);
 		}
 
@@ -89,54 +70,29 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(EditProductViewModel productVM)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                var editedProduct = new Product
-                {
-                    Id = productVM.Id,
-                    Name = productVM.Name,
-                    CategoryId = productVM.CategoryId,
-                    Description = productVM.Description,
-                    Price = productVM.Price,
-                    CreatedAt = productVM.CreatedAt,
-                };
-
-                if (productVM.Image == null)
-                {
-                    editedProduct.Image = await _productRepository.GetImageNameAsync(productVM.Id);
-                }
-                else
-                {
-                    var imageName = await _productRepository.GetImageNameAsync(productVM.Id);
-
-                    if (!imageName.Equals("no-image.jpg"))
-                    {
-                        System.IO.File.Delete(Path.Combine(_webHostEnvironment.WebRootPath, "images", "Products", imageName));
-                    }
-
-                    editedProduct.Image = UploadedFile(productVM);
-                }
-                _productRepository.UpdateAsync(editedProduct);
-                _notifyService.Success("Product changed!");
-
-                return RedirectToAction("Index");
+                await PopulateCategoryDropdown(productVM.CategoryId);
+                return View(productVM);
             }
+            
+            var editedProduct = await HandleProductEdit(productVM);
+            await productRepository.UpdateAsync(editedProduct);
+            notifyService.Success("Product updated successfully!");
 
-            ViewData["CategoryId"] = new SelectList(await _categoryRepository.GetAllAsync(), "Id", "Name", productVM.CategoryId);
-
-            return View(productVM);
+            return RedirectToAction(nameof(Index));
         }
 
         public async Task<IActionResult> Delete(int id)
         {
-            var product = await _productRepository.GetByIdAsync(id);
+            var product = await productRepository.GetByIdAsync(id);
 
             if (product != null)
             {
                 return View(product);
             }
 
-            _notifyService.Error("Product not found!");
+            notifyService.Error("Product not found!");
 
             return RedirectToAction("Index");
         }
@@ -147,41 +103,124 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
         {
             try
             {
-                var product = await _productRepository.GetByIdAsync(id);
-
-                if (product != null)
+                var product = await productRepository.GetByIdAsync(id);
+                if (product == null)
                 {
-                    if (!product.Image.Equals("no-image.jpg"))
-                    {
-                        System.IO.File.Delete(Path.Combine(_webHostEnvironment.WebRootPath, "images", "Products", product.Image));
-                    }
-
-                    await _productRepository.DeleteAsync(id);
-                    _notifyService.Success("Product deleted!");
+                    notifyService.Error("Product not found!");
+                    return RedirectToAction(nameof(Index));
                 }
+
+                var imagePath = product.Image;
+                var deleteResult = await productRepository.DeleteAsync(id);
+        
+                if (deleteResult)
+                {
+                    if (!string.IsNullOrEmpty(imagePath) && 
+                        imagePath != "no-image.jpg" &&
+                        System.IO.File.Exists(Path.Combine(webHostEnvironment.WebRootPath, "images", "Products", imagePath)))
+                    {
+                        System.IO.File.Delete(Path.Combine(webHostEnvironment.WebRootPath, "images", "Products", imagePath));
+                    }
+            
+                    notifyService.Success($"Product was successfully deleted!");
+                }
+                else
+                {
+                    notifyService.Warning($"Cannot delete because it is in someone's shopping cart or has existing orders.");
+                }
+
+                return RedirectToAction(nameof(Index));
             }
             catch (Exception)
             {
-                _notifyService.Error("Unable to delete product!");
+                notifyService.Error("Failed to delete the product");
+                return RedirectToAction(nameof(Index));
             }
-
-            return RedirectToAction(nameof(Index));
         }
 
         private string UploadedFile(IProductViewModelImage model)
         {
-            string uniqueFileName = Path.Combine(_webHostEnvironment.WebRootPath, "images", "no-image.jpg");
-
-            if (model.Image != null)
+            if (model.Image == null)
             {
-                string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "Products");
-                uniqueFileName = Guid.NewGuid().ToString() + "_" + model.Image.FileName;
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                using var fileStream = new FileStream(filePath, FileMode.Create);
-                model.Image.CopyTo(fileStream);
+                return "no-image.jpg";
             }
 
-            return uniqueFileName;
+            var uploadsFolder = Path.Combine(webHostEnvironment.WebRootPath, "images", "Products");
+            
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+
+            var uniqueFileName = Guid.NewGuid().ToString() + "_" + model.Image.FileName;
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+    
+            using var fileStream = new FileStream(filePath, FileMode.Create);
+            model.Image.CopyTo(fileStream);
+    
+            return uniqueFileName;  
+        }
+        
+        private async Task PopulateCategoryDropdown(int? selectedCategoryId = null)
+        {
+            var categories = await categoryRepository.GetAllAsync();
+            ViewData["CategoryId"] = new SelectList(categories, "Id", "Name", selectedCategoryId);
+        }
+        
+        private Product MapToProduct(CreateProductViewModel productVM)
+        {
+            return new Product
+            {
+                Name = productVM.Name,
+                Description = string.IsNullOrWhiteSpace(productVM.Description) ? 
+                    "No description provided" : productVM.Description,
+                CreatedAt = DateTime.Now,
+                Image = UploadedFile(productVM),
+                Price = productVM.Price,
+                CategoryId = productVM.CategoryId
+            };
+        }
+        
+        private async Task<Product> HandleProductEdit(EditProductViewModel productVM)
+        {
+            var editedProduct = new Product
+            {
+                Id = productVM.Id,
+                Name = productVM.Name,
+                CategoryId = productVM.CategoryId,
+                Description = string.IsNullOrWhiteSpace(productVM.Description) ? 
+                    "No description provided" : productVM.Description,
+                Price = productVM.Price,
+                CreatedAt = productVM.CreatedAt
+            };
+
+            if (productVM.Image == null)
+            {
+                editedProduct.Image = await productRepository.GetImageNameAsync(productVM.Id);
+            }
+            else
+            {
+                var imageName = await productRepository.GetImageNameAsync(productVM.Id);
+
+                if (!imageName.Equals("no-image.jpg"))
+                {
+                    System.IO.File.Delete(Path.Combine(webHostEnvironment.WebRootPath, "images", "Products", imageName));
+                }
+
+                editedProduct.Image = UploadedFile(productVM);
+            }
+
+            return editedProduct;
+        }
+        
+        private async Task HandleProductDeletion(Product product)
+        {
+            if (!product.Image.Equals("no-image.jpg"))
+            {
+                System.IO.File.Delete(Path.Combine(webHostEnvironment.WebRootPath, "images", "Products", product.Image));
+            }
+
+            await productRepository.DeleteAsync(product.Id);
         }
     }
 }

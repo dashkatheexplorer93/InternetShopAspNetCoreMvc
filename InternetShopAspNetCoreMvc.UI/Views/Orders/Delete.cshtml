@@ -4,9 +4,15 @@
     ViewData["Title"] = "Delete";
 }
 
-<h1>Delete</h1>
+<div class="center">
+    <h1>Delete order</h1>
+    <h3>Are you sure you want to delete this order?</h3>
+    
+    <div class="alert alert-warning">
+        <strong>Warning!</strong> This action cannot be undone. The order will be permanently deleted, and all associated data will be lost
+    </div>
+</div>
 
-<h3>Are you sure you want to delete this?</h3>
 <div>
     <h4>Order</h4>
     <hr />
@@ -34,6 +40,6 @@
     <form asp-action="Delete">
         <input type="hidden" asp-for="Id" />
         <input type="submit" value="Delete" class="btn btn-danger" /> |
-        <a asp-action="Index">Back to List</a>
+        <a class="btn btn-secondary width-200-px" asp-action="Index">Back to List</a>
     </form>
 </div>

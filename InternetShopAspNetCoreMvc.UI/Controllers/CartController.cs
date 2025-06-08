@@ -5,68 +5,97 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace InternetShopAspNetCoreMvc.UI.Controllers
 {
-	public class CartController : Controller
+	public class CartController(ICartRepository cartRepository, INotyfService notifyService)
+		: Controller
 	{
-		private readonly ICartRepository _cartRepository;
-		private readonly INotyfService _notifyService;
 		private const int UserId = 1;
-
-        public CartController(ICartRepository cartRepository, INotyfService notifyService)
-		{
-			_cartRepository = cartRepository;
-			_notifyService = notifyService;
-		}
 
 		public async Task<IActionResult> Index()
 		{
-			var cartItems = await _cartRepository.GetByUserIdAsync(UserId);
+			var cartItems = await cartRepository.GetByUserIdAsync(UserId);
 			return View(cartItems);
 		}
 
 		[HttpPost]
-		public IActionResult AddToCart(CartItem item)
+		public async Task<IActionResult> AddToCart(CartItem item)
 		{
-			item.UserId = UserId;
-            _cartRepository.AddAsync(item);
-			_notifyService.Success("Added to cart!");
+			if (item == null) 
+				return BadRequest();
 
-			return RedirectToAction("Index", "Products");
+			try
+			{
+				item.UserId = UserId;
+				await cartRepository.AddAsync(item);
+				notifyService.Success("Added to cart!");
+				return RedirectToAction("Index", "Products");
+			}
+			catch (Exception)
+			{
+				notifyService.Error("Failed to add item to cart");
+				return RedirectToAction("Index", "Products");
+			}
 		}
 
-		public IActionResult EmptyCart()
+		public async Task<IActionResult> EmptyCart()
 		{
-            _cartRepository.DeleteAllByUserIdAsync(UserId);
-            _notifyService.Success("Removed all from cart!");
+            await cartRepository.DeleteAllByUserIdAsync(UserId);
+            notifyService.Success("Removed all from cart!");
 
-            return RedirectToAction("Index");
+            return RedirectToAction(nameof(Index));
 		}
 
 		[HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
-            var cartItem = await _cartRepository.GetByIdAsync(id);
+            var cartItem = await cartRepository.GetByIdAsync(id);
 
+            if (cartItem == null)
+	            return NotFound();
+            
             return View(cartItem);
-            // return RedirectToAction("Index");
         }
 
 		[HttpPost]
-		public IActionResult Edit(CartItem item) 
+		public async Task<IActionResult> Edit(CartItem item) 
 		{
-            _cartRepository.UpdateAsync(item);
-            _notifyService.Success("Changed successfully!");
+			if (item == null)
+				return BadRequest();
 
-            return RedirectToAction("Index");
+			if (item.Quantity <= 0)
+			{
+				ModelState.AddModelError("Quantity", "Quantity must be greater than 0");
+				return View(item);
+			}
+
+			try
+			{
+				var existingItem = await cartRepository.GetByIdAsync(item.Id);
+				if (existingItem is not { UserId: UserId })
+					return NotFound();
+
+				await cartRepository.UpdateAsync(item);
+				notifyService.Success("Changed successfully!");
+        
+				return RedirectToAction(nameof(Index));
+			}
+			catch (Exception ex)
+			{
+				notifyService.Error("Failed to update cart item!");
+				return View(item);
+			}
 		}
 
         public async Task<IActionResult> Delete(int id)
 		{
-			var cartItem = await  _cartRepository.GetByIdAsync(id);
+			var cartItem = await  cartRepository.GetByIdAsync(id);
 			
-			await _cartRepository.DeleteAsync(cartItem); 
-			_notifyService.Success("Deleted successfully!");
+			if (cartItem is not { UserId: UserId })
+				return NotFound();
 			
-			return RedirectToAction("Index");
+			await cartRepository.DeleteAsync(cartItem); 
+			notifyService.Success("Deleted successfully!");
+
+			return RedirectToAction(nameof(Index));
 		}
 	}
 }

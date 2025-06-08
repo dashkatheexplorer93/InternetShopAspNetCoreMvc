@@ -16,7 +16,11 @@
 	{
 		var image = $"~/images/Products/{product.Image}";
 		<div class="card m-1" style="width:300px; height:500px">
-			<img class="card-img-top" src=@Url.Content(image) alt="Card image" style="height:300px">
+			<img class="card-img-top" 
+			     src="~/images/Products/@(string.IsNullOrEmpty(product.Image) ? "no-image.jpg" : product.Image)"
+			     alt="@product.Name"
+			     style="height:300px; object-fit: cover;"
+			     onerror="this.src='/images/no-image.jpg'">
 			<div class="card-body">
 				<h4 class="card-title">@product.Name</h4>
 				<h5 class="card-title">@product.Price.ToString("C0")</h5>

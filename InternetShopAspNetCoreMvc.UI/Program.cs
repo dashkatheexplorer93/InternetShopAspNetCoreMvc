@@ -47,22 +47,36 @@ app.UseMiddleware<ErrorHandlingMiddleware>();
 //	app.UseDeveloperExceptionPage();
 //}
 
+app.UseStatusCodePages();
+
+app.MapControllers();
+
 app.Use(async (context, next) =>
 {
 	await next();
-	if (context.Response.StatusCode == 404)
+	if (context.Response is { StatusCode: 404, HasStarted: false })
 	{
-		context.Request.Path = "/PageNotFound";
+		context.Request.Path = "/404";
+		context.Response.StatusCode = 404;
 		await next();
 	}
 });
 
 app.UseHttpsRedirection();
+
+var imagesPath = Path.Combine(builder.Environment.WebRootPath, "images", "Products");
+if (!Directory.Exists(imagesPath))
+{
+	Directory.CreateDirectory(imagesPath);
+}
+
 app.UseStaticFiles();
 
 app.UseRouting();
 
 app.UseAuthorization();
+
+app.UseStatusCodePagesWithReExecute("/404");
 
 app.MapControllerRoute(
 	name: "default",

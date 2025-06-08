@@ -9,8 +9,10 @@
 	<a class="btn btn-dark" asp-area="" asp-controller="Categories" asp-action="Manage">Manage categories</a>
 </div>
 
-<table class="table">
-	<thead>
+@if (Model?.Any() == true)
+{
+	<table class="table">
+		<thead>
 		<tr>
 			<th>
 				@Html.DisplayNameFor(model => model.Name)
@@ -20,8 +22,8 @@
 			</th>
 			<th></th>
 		</tr>
-	</thead>
-	<tbody>
+		</thead>
+		<tbody>
 		@foreach (var item in Model)
 		{
 			<tr>
@@ -36,7 +38,12 @@
 				</td>
 			</tr>
 		}
-	</tbody>
-</table>
-
-<br />
+		</tbody>
+	</table>
+}
+else
+{
+	<div class="alert alert-info mt-3">
+		No categories available. Use the Manage categories button to add some.
+	</div>
+}

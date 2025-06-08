@@ -1,0 +1,68 @@
+﻿@model InternetShopAspNetCoreMvc.Domain.Models.Order
+
+@{
+    ViewData["Title"] = "Details";
+    decimal shippingCost = 10;
+    var totalWithShipping = Model.Amount + shippingCost;
+}
+
+<h1>Order details</h1>
+
+<div>
+    <hr />
+    <table class="table">
+        <thead>
+        <tr>
+            <th>
+                <p>Product Name</p>
+            </th>
+            <th>
+                <p>Price</p>
+            </th>
+            <th>
+                <p>Quantity</p>
+            </th>
+            <th>
+                <p>Total</p>
+            </th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model.OrderDetails)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Product.Name)
+                </td>
+                <td>
+                    <p>@item.Price.ToString("C0")</p>
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Quantity)
+                </td>
+                <td>
+                    <p>@item.Total.ToString("C0")</p>
+                </td>
+            </tr>
+        }
+        <tr>
+            <td colspan="3" class="text-end">
+                <strong>Shipping:</strong>
+            </td>
+            <td>
+                <p>@shippingCost UAH</p>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3" class="text-end">
+                <strong>Total with shipping:</strong>
+            </td>
+            <td>
+                <p>@totalWithShipping.ToString("C0")</p>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+

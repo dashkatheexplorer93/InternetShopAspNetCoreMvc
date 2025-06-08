@@ -40,4 +40,10 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        $.validator.methods.number = function (value, element) {
+            return this.optional(element) || !isNaN(value.replace(",", "."));
+        };
+    </script>
 }

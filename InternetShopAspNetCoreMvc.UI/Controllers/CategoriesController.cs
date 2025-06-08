@@ -6,26 +6,21 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace InternetShopAspNetCoreMvc.UI.Controllers
 {
-	public class CategoriesController : Controller
+	public class CategoriesController(ICategoryRepository categoryRepository, INotyfService notifyService)
+		: Controller
 	{
-		private readonly ICategoryRepository _categoryRepository;
-        private readonly INotyfService _notifyService;
+		private const string LoadFailedMessage = "Failed to load categories: {0}";
 
-        public CategoriesController(ICategoryRepository CategoryRepository, INotyfService notifyService)
-		{
-			_categoryRepository = CategoryRepository;
-			_notifyService = notifyService;
-		}
 
 		public async Task<IActionResult> Index()
 		{
 			try
 			{
-				return View(await _categoryRepository.GetAllAsync());
+				return View(await categoryRepository.GetAllAsync());
             }
 			catch (Exception ex)
 			{
-				_notifyService.Error($"Failed to load categories: {ex.Message}");
+				notifyService.Error(string.Format(LoadFailedMessage, ex.Message));
                 return RedirectToAction("Index", "Products");
             }
 		}
@@ -34,108 +29,135 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
 		{
             try
             {
-                return View(await _categoryRepository.GetAllAsync());
+                return View(await categoryRepository.GetAllAsync());
             }
             catch (Exception ex)
             {
-                _notifyService.Error($"Failed to load categories: {ex.Message}");
+                notifyService.Error(string.Format(LoadFailedMessage, ex.Message));
                 return RedirectToAction("Index", "Products");
             }
 		}
 
-		public IActionResult Create()
-		{
-			return View();
-		}
+		public IActionResult Create() => View();
 
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> Create(CategoryViewModel categoryVM)
 		{
+			if (!ModelState.IsValid)
+				return View(categoryVM);
+
 			try
 			{
-                if (ModelState.IsValid)
-                {
-                    var category = new Category
-                    {
-                        Name = categoryVM.Name,
-                        Description = categoryVM.Description,
-                        CreatedAt = DateTime.Now,
-                    };
-                    await _categoryRepository.AddAsync(category);
-                    _notifyService.Success("Created category!");
-
-                    return RedirectToAction("Index");
-                }
-
-                return View(categoryVM);
-            }
+				await categoryRepository.AddAsync(MapToCategory(categoryVM));
+				notifyService.Success("Category created successfully!");
+				return RedirectToAction(nameof(Index));
+			}
 			catch (Exception)
 			{
-                _notifyService.Error("An error occurred!");
-                return RedirectToAction("Index");
-            }
+				notifyService.Error("Failed to create category");
+				return RedirectToAction(nameof(Index));
+			}
 		}
 
 		public async Task<IActionResult> Edit(int id)
 		{
-			return View(await _categoryRepository.GetByIdAsync(id));
+			if (id <= 0)
+				return BadRequest();
+			
+			try
+			{
+				var category = await categoryRepository.GetByIdAsync(id);
+				return category == null ? NotFound() : View(category);
+			}
+			catch (Exception ex)
+			{
+				notifyService.Error(string.Format(LoadFailedMessage, ex.Message));
+				return RedirectToAction(nameof(Index));
+			}
+
 		}
 
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public IActionResult Edit(Category category)
+		public async Task<IActionResult> Edit(Category category)
 		{
+			if (!ModelState.IsValid)
+				return View(category);
+
 			try
 			{
-                if (ModelState.IsValid)
-                {
-                    _categoryRepository.UpdateAsync(category);
-                    _notifyService.Success("Changed category!");
-                }
-
-                return View(category);
-            }
+				await categoryRepository.UpdateAsync(category);
+				notifyService.Success("Changed category!");
+				return RedirectToAction(nameof(Index));
+			}
 			catch (Exception)
 			{
-                _notifyService.Error("An error occurred!");
-                return RedirectToAction("Index");
-            }
+				notifyService.Error("Failed to change the category");
+				return RedirectToAction(nameof(Index));
+			}
 		}
 
-		public async Task<IActionResult> Delete(int? id)
+		public async Task<IActionResult> Delete(int id)
 		{
-            var category = await _categoryRepository.GetByIdAsync(id.Value);
+			if (id <= 0)
+				return BadRequest();
 
-            if (category != null)
-            {
-                return View(category);
-            }
-
-            return RedirectToAction("index");
+			try
+			{
+				var category = await categoryRepository.GetByIdAsync(id);
+				return category == null ? NotFound() : View(category);
+			}
+			catch (Exception)
+			{
+				notifyService.Error("Failed to delete the category");
+				return RedirectToAction(nameof(Index));
+			}
         }
 
 		[HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-		public IActionResult DeleteConfirmed(int id)
+		public async Task<IActionResult> DeleteConfirmed(int id)
 		{
 			try
 			{
-                _categoryRepository.DeleteAsync(id);
-                _notifyService.Success("Deleted category!");
-
-                return RedirectToAction("index");
-            }
-            catch (Exception)
-            {
-                _notifyService.Error("An error occurred!");
-                return RedirectToAction("Index");
-            }
+				await categoryRepository.DeleteAsync(id);
+				notifyService.Success("Сategory successfully deleted!");
+				return RedirectToAction(nameof(Index));
+			}
+			catch (Exception)
+			{
+				notifyService.Error("Failed to delete the category");
+				return RedirectToAction(nameof(Index));
+			}
 		}
 	
 		public async Task<IActionResult> CategoryProducts(int id)
 		{
-			return View(await _categoryRepository.GetByIdAsync(id));
+			if (id <= 0)
+				return BadRequest();
+			
+			try
+			{
+				var category = await categoryRepository.GetByIdAsync(id);
+				return category == null ? NotFound() : View(category);
+			}
+			catch (Exception ex)
+			{
+				notifyService.Error(string.Format(LoadFailedMessage, ex.Message));
+				return RedirectToAction(nameof(Index));
+			}
+
+		}
+		
+		private static Category MapToCategory(CategoryViewModel categoryVM)
+		{
+			return new Category
+			{
+				Name = categoryVM.Name,
+				Description = categoryVM.Description ?? "No description yet, you better add one!",
+				CreatedAt = DateTime.Now
+			};
 		}
 	}
 }

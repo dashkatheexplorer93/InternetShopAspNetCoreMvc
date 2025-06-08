@@ -4,9 +4,16 @@
     ViewData["Title"] = "Delete";
 }
 
-<h1 class="center">Delete category</h1>
+<div class="center">
+    <h1>Delete category</h1>
+    <h3>Are you sure you want to delete this category?</h3>
 
-<h3>Are you sure you want to delete this?</h3>
+    <div class="alert alert-warning">
+        <strong>Warning!</strong> You cannot delete a category if it has any associated products.
+        Please ensure all products are removed from this category or reassigned to another category before deletion.
+    </div>
+</div>
+
 <div>
     <h4>Category</h4>
     <hr />

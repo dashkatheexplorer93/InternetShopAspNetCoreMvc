@@ -1,4 +1,5 @@
-﻿using InternetShopAspNetCoreMvc.Data.Interfaces;
+﻿using AspNetCoreHero.ToastNotification.Abstractions;
+using InternetShopAspNetCoreMvc.Data.Interfaces;
 using InternetShopAspNetCoreMvc.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,51 +8,38 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
     public class OrdersController(
         IOrdersRepository ordersRepository,
         ICartRepository cartRepository,
-        ILogger<OrdersController> logger)
+        INotyfService notifyService)
         : Controller
     {
         private const int UserId = 1;
         private const decimal ShippingCost = 10m;
 
-        public async Task<IActionResult> IndexAsync()
-        {
-            try
+        public async Task<IActionResult> Index() =>
+            await ExecuteAsync(async () =>
             {
                 var orders = await ordersRepository.GetOrdersByUserIdWithDetailsAsync(UserId);
-                return View(orders);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error retrieving orders for user {UserId}", UserId);
-                return Problem("Error retrieving orders");
-            }
 
-        }
+                return View("Index", orders);
+            }, "Error retrieving orders");
 
-        public async Task<IActionResult> DetailsAsync([FromRoute] int id)
+
+        public async Task<IActionResult> Details(int id)
         {
-            if (id <= 0)
+            if (!IsValidOrderId(id))
             {
                 return BadRequest("Invalid order ID");
             }
 
-            try
+            return await ExecuteAsync(async () =>
             {
                 var order = await ordersRepository.GetOrderByIdWithDetailsAsync(id);
-                return order != null ? View(order) : View("DoesNotExist");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error retrieving order details for ID {OrderId}", id);
-                return Problem("Error retrieving order details");
-            }
-
+                return order != null ? View(order) : NotFound($"Order with ID {id} was not found");
+            }, "Error retrieving order details");
         }
 
         [HttpGet]
-        public async Task<IActionResult> PlaceOrderAsync()
-        {
-            try
+        public async Task<IActionResult> PlaceOrder() =>
+            await ExecuteAsync(async () =>
             {
                 var cartItems = await cartRepository.GetByUserIdAsync(UserId);
                 
@@ -60,49 +48,104 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
                     return RedirectToAction("Index", "Cart");
                 }
 
-                ViewData["total"] = CalculateOrderTotal(cartItems);
+                var subtotal = cartItems.Sum(c => c.Product.Price * c.Quantity);
+                ViewBag.Subtotal = subtotal;
+                ViewBag.ShippingCost = ShippingCost;
+                ViewBag.Total = subtotal + ShippingCost;
+                
                 return View(cartItems);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error preparing order placement for user {UserId}", UserId);
-                return Problem("Error preparing order placement");
-            }
+            }, "Error preparing order placement");
 
-        }
 
-        public async Task<IActionResult> PlaceOrderConfirmedAsync()
-        {
-            try
+        public async Task<IActionResult> PlaceOrderConfirmed() =>
+            await ExecuteAsync(async () =>
             {
                 await ordersRepository.ConfirmOrderAsync(UserId);
                 return RedirectToAction(nameof(Index));
-            }
-            catch (Exception ex)
+            }, "Error processing your order");
+        
+        public async Task<IActionResult> Edit(int id) =>
+            await ExecuteAsync(async () =>
             {
-                logger.LogError(ex, "Error confirming order for user {UserId}", UserId);
-                return Problem("Error processing your order");
+                if (!IsValidOrderId(id))
+                {
+                    return BadRequest("Invalid order ID");
+                }
+
+                var order = await ordersRepository.GetOrderByIdWithDetailsAsync(id);
+                return order != null ? View(order) : NotFound($"Order with ID {id} was not found");
+            }, "Error retrieving order for edit");
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(Order order) =>
+            await ExecuteAsync(async () =>
+            {
+                if (!ModelState.IsValid)
+                {
+                    return View(order);
+                }
+
+                await ordersRepository.UpdateAsync(order);
+                return RedirectToAction(nameof(Index));
+            }, "Error updating order");
+
+        
+        public async Task<IActionResult> Delete(int id)
+        {
+            var order = await ordersRepository.GetOrderByIdWithDetailsAsync(id);
+            if (order == null)
+            {
+                return NotFound();
             }
+
+            return View(order);
         }
 
-        public async Task<IActionResult> ManageAsync()
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
         {
             try
             {
+                var deleted = await ordersRepository.DeleteOrderAsync(id);
+                if (deleted)
+                {
+                    notifyService.Success("Order deleted successfully!");
+                }
+                else
+                {
+                    notifyService.Error("Order not found");
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception)
+            {
+                notifyService.Error("Failed to delete order");
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
+        public async Task<IActionResult> Manage() =>
+            await ExecuteAsync(async () =>
+            {
                 var orders = await ordersRepository.GetAllOrdersAsync();
                 return View(orders);
+            }, "Error retrieving orders");
+
+        private async Task<IActionResult> ExecuteAsync(Func<Task<IActionResult>> action, string errorMessage)
+        {
+            try
+            {
+                return await action();
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error retrieving orders for management");
-                return Problem("Error retrieving orders");
-
+                notifyService.Error(errorMessage);
+                return Problem(errorMessage);
             }
         }
-        
-        private static decimal CalculateOrderTotal(IEnumerable<CartItem> cartItems)
-        {
-            return cartItems.Sum(c => c.Product.Price * c.Quantity) + ShippingCost;
-        }
+
+        private static bool IsValidOrderId(int id) => id > 0;
 	}
 }
