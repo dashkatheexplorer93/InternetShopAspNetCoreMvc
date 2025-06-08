@@ -3,11 +3,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InternetShopAspNetCoreMvc.Data
 {
-    public class InternetShopDbContext : DbContext
-	{
-		public InternetShopDbContext(DbContextOptions<InternetShopDbContext> options) : base(options) { }
-
-		public DbSet<Order> Orders { get; set; }
+    public class InternetShopDbContext(DbContextOptions<InternetShopDbContext> options) : DbContext(options)
+    {
+	    public DbSet<Order> Orders { get; set; }
 		public DbSet<OrderDetail> OrderDetails { get; set; }
 		public DbSet<CartItem> CartItems { get; set; }
 		public DbSet<Category> Categories { get; set; }

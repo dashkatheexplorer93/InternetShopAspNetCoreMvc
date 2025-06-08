@@ -27,21 +27,21 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
             _notifyService = notifyService;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            return View(_productRepository.GetAll());
+            return View(await _productRepository.GetAllAsync());
         }
 
-		public IActionResult Create()
+		public async Task<IActionResult> Create()
         {
-            ViewData["CategoryId"] = new SelectList(_categoryRepository.GetAll(), "Id", "Name");
+            ViewData["CategoryId"] = new SelectList(await _categoryRepository.GetAllAsync(), "Id", "Name");
 
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Create(CreateProductViewModel productVM)
+        public async Task<IActionResult> Create(CreateProductViewModel productVM)
         {
             if (ModelState.IsValid)
             {
@@ -54,42 +54,40 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
                     Price = productVM.Price,
                     CategoryId = productVM.CategoryId,
                 };
-                _productRepository.Add(newProduct);
+                _productRepository.AddAsync(newProduct);
                 _notifyService.Success("Product created!");
 
                 return RedirectToAction("Index");
             }
 
-            ViewData["CategoryId"] = new SelectList(_categoryRepository.GetAll(), "Id", "Name", productVM.CategoryId);
+            ViewData["CategoryId"] = new SelectList(await _categoryRepository.GetAllAsync(), "Id", "Name", productVM.CategoryId);
 
             return View(productVM);
         }
 
-        public IActionResult Manage()
+        public async Task<IActionResult> Manage()
         {
-            return View(_productRepository.GetAll());
+            return View(await _productRepository.GetAllAsync());
         }
 
-        public IActionResult Edit(int id)
+        public async Task<IActionResult> Edit(int id)
         {
-            var product = _productRepository.GetById(id);
-
-            if (product != null)
+            var product = await _productRepository.GetByIdAsync(id);
+            
+            if (product == null)
             {
-                var editProductVM = EditProductViewModel.FromProduct(product);
-                ViewData["CategoryId"] = new SelectList(_categoryRepository.GetAll(), "Id", "Name", product.CategoryId);
-
-				return View(editProductVM);
+                _notifyService.Error("Product not found!");
+                return RedirectToAction("Index");
             }
-
-			_notifyService.Error("Product not found!");
-
-			return RedirectToAction("Index");
+            
+            var editProductVM = EditProductViewModel.FromProduct(product);
+            ViewData["CategoryId"] = new SelectList(await _categoryRepository.GetAllAsync(), "Id", "Name", product.CategoryId);
+            return View(editProductVM);
 		}
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Edit(EditProductViewModel productVM)
+        public async Task<IActionResult> Edit(EditProductViewModel productVM)
         {
             if (ModelState.IsValid)
             {
@@ -105,11 +103,11 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
 
                 if (productVM.Image == null)
                 {
-                    editedProduct.Image = _productRepository.GetImageName(productVM.Id);
+                    editedProduct.Image = await _productRepository.GetImageNameAsync(productVM.Id);
                 }
                 else
                 {
-                    var imageName = _productRepository.GetImageName(productVM.Id);
+                    var imageName = await _productRepository.GetImageNameAsync(productVM.Id);
 
                     if (!imageName.Equals("no-image.jpg"))
                     {
@@ -118,20 +116,20 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
 
                     editedProduct.Image = UploadedFile(productVM);
                 }
-                _productRepository.Edit(editedProduct);
+                _productRepository.UpdateAsync(editedProduct);
                 _notifyService.Success("Product changed!");
 
                 return RedirectToAction("Index");
             }
 
-            ViewData["CategoryId"] = new SelectList(_categoryRepository.GetAll(), "Id", "Name", productVM.CategoryId);
+            ViewData["CategoryId"] = new SelectList(await _categoryRepository.GetAllAsync(), "Id", "Name", productVM.CategoryId);
 
             return View(productVM);
         }
 
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var product = _productRepository.GetById(id);
+            var product = await _productRepository.GetByIdAsync(id);
 
             if (product != null)
             {
@@ -145,11 +143,11 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
 
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public IActionResult DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(int id)
         {
             try
             {
-                var product = _productRepository.GetById(id);
+                var product = await _productRepository.GetByIdAsync(id);
 
                 if (product != null)
                 {
@@ -158,7 +156,7 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
                         System.IO.File.Delete(Path.Combine(_webHostEnvironment.WebRootPath, "images", "Products", product.Image));
                     }
 
-                    _productRepository.Delete(id);
+                    await _productRepository.DeleteAsync(id);
                     _notifyService.Success("Product deleted!");
                 }
             }

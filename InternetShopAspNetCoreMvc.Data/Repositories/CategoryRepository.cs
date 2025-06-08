@@ -4,59 +4,73 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InternetShopAspNetCoreMvc.Data.Repositories
 {
-	public class CategoryRepository : ICategoryRepository
-	{
-		private readonly InternetShopDbContext _context;
+	public class CategoryRepository(InternetShopDbContext context) : ICategoryRepository
+    {
+		private readonly InternetShopDbContext _context = context ?? throw new ArgumentNullException(nameof(context));
 
-		public CategoryRepository(InternetShopDbContext context)
-		{
-			_context = context;
-		}
-
-        public Category AddCategory(Category category)
+        public async Task<Category> AddAsync(Category category)
         {
-            _context.Categories.Add(category);
-            _context.SaveChanges();
+            ArgumentNullException.ThrowIfNull(category, nameof(category));
+            
+            category.CreatedAt = DateTime.UtcNow;
+            await _context.Categories.AddAsync(category);
+            await _context.SaveChangesAsync();
 
-            return _context.Categories
+            return category;
+        }
+
+        public async Task DeleteAsync(int categoryId)
+        {
+            var category = await GetByIdAsync(categoryId);
+
+            if (category == null)
+            {
+                throw new KeyNotFoundException($"Category with ID {categoryId} not found");
+            }
+
+            _context.Categories.Remove(category);
+            await _context.SaveChangesAsync();
+
+        }
+
+        public async Task<IReadOnlyList<Category>> GetAllAsync()
+        {
+            return await _context.Categories.AsNoTracking().ToListAsync();
+        }
+
+        public async Task<Category?> GetByIdAsync(int categoryId)
+        {
+            if (categoryId < 1)
+            {
+                throw new ArgumentException("Category ID must be positive", nameof(categoryId));
+            }
+    
+            return await _context.Categories
                 .AsNoTracking()
-                .FirstOrDefault(c => c.Id == category.Id);
+                .Include(c => c.Products)
+                .FirstOrDefaultAsync(c => c.Id == categoryId);
         }
-
-        public void Delete(int id)
+        
+        public async Task UpdateAsync(Category category)
         {
-            var category = GetById(id);
-
-            if (category != null)
+            ArgumentNullException.ThrowIfNull(category);
+            
+            if (string.IsNullOrEmpty(category.Name))
             {
-                _context.Categories.Remove(category);
-                _context.SaveChanges();
-            }
-        }
-
-        public List<Category> GetAll()
-        {
-            return _context.Categories.AsNoTracking().ToList();
-        }
-
-        public Category GetById(int id)
-        {
-            return _context.Categories.AsNoTracking().Include(c => c.Products).FirstOrDefault(c => c.Id == id);
-        }
-
-        public Category Edit(Category category)
-        {
-            var existingCategory = _context.Categories.FirstOrDefault(c => c.Id == category.Id);
-
-            if (existingCategory != null)
-            {
-                existingCategory.Name = category.Name;
-                existingCategory.Description = category.Description;
-
-                _context.SaveChanges();
+                throw new ArgumentException("Category name is required", nameof(category));
             }
 
-            return existingCategory;
+            var existingCategory = await _context.Categories.FirstOrDefaultAsync(c => c.Id == category.Id);
+
+            if (existingCategory == null)
+            {
+                throw new KeyNotFoundException($"Category with ID {category.Id} not found");
+            }
+
+            existingCategory.Name = category.Name;
+            existingCategory.Description = category.Description;
+            
+            await _context.SaveChangesAsync();
         }
     }
 }

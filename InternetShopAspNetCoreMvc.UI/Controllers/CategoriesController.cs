@@ -17,29 +17,28 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
 			_notifyService = notifyService;
 		}
 
-		public IActionResult Index()
+		public async Task<IActionResult> Index()
 		{
 			try
 			{
-                //throw new NotImplementedException("test");
-                return View(_categoryRepository.GetAll());
+				return View(await _categoryRepository.GetAllAsync());
             }
-			catch (Exception)
+			catch (Exception ex)
 			{
-				_notifyService.Error("An error occurred!");
+				_notifyService.Error($"Failed to load categories: {ex.Message}");
                 return RedirectToAction("Index", "Products");
             }
 		}
 
-		public IActionResult Manage()
+		public async Task<IActionResult> Manage()
 		{
             try
             {
-                return View(_categoryRepository.GetAll());
+                return View(await _categoryRepository.GetAllAsync());
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                _notifyService.Error("An error occurred!");
+                _notifyService.Error($"Failed to load categories: {ex.Message}");
                 return RedirectToAction("Index", "Products");
             }
 		}
@@ -51,7 +50,7 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
 
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public IActionResult Create(CategoryViewModel categoryVM)
+		public async Task<IActionResult> Create(CategoryViewModel categoryVM)
 		{
 			try
 			{
@@ -63,13 +62,13 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
                         Description = categoryVM.Description,
                         CreatedAt = DateTime.Now,
                     };
-                    _categoryRepository.AddCategory(category);
+                    await _categoryRepository.AddAsync(category);
                     _notifyService.Success("Created category!");
 
                     return RedirectToAction("Index");
                 }
 
-                return View(ModelState);
+                return View(categoryVM);
             }
 			catch (Exception)
 			{
@@ -78,9 +77,9 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
             }
 		}
 
-		public IActionResult Edit(int id)
+		public async Task<IActionResult> Edit(int id)
 		{
-			return View(_categoryRepository.GetById(id));
+			return View(await _categoryRepository.GetByIdAsync(id));
 		}
 
 		[HttpPost]
@@ -91,7 +90,7 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
 			{
                 if (ModelState.IsValid)
                 {
-                    _categoryRepository.Edit(category);
+                    _categoryRepository.UpdateAsync(category);
                     _notifyService.Success("Changed category!");
                 }
 
@@ -104,9 +103,9 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
             }
 		}
 
-		public IActionResult Delete(int? id)
+		public async Task<IActionResult> Delete(int? id)
 		{
-            var category = _categoryRepository.GetById(id.Value);
+            var category = await _categoryRepository.GetByIdAsync(id.Value);
 
             if (category != null)
             {
@@ -122,7 +121,7 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
 		{
 			try
 			{
-                _categoryRepository.Delete(id);
+                _categoryRepository.DeleteAsync(id);
                 _notifyService.Success("Deleted category!");
 
                 return RedirectToAction("index");
@@ -134,9 +133,9 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
             }
 		}
 	
-		public IActionResult CategoryProducts(int id)
+		public async Task<IActionResult> CategoryProducts(int id)
 		{
-			return View(_categoryRepository.GetById(id));
+			return View(await _categoryRepository.GetByIdAsync(id));
 		}
 	}
 }

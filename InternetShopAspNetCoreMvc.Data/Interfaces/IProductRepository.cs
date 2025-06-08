@@ -4,16 +4,16 @@ namespace InternetShopAspNetCoreMvc.Data.Interfaces
 {
 	public interface IProductRepository
 	{
-		List<Product> GetAll();
+		Task<List<Product>> GetAllAsync();
 
-		Product GetById(int id);
+		Task<Product?> GetByIdAsync(int productId);
 
-		void Add(Product product);
+		Task<Product> AddAsync(Product product);
 
-		Product Edit(Product product);
+		Task<Product?> UpdateAsync(Product product);
 
-		void Delete(int id);
+		Task<bool> DeleteAsync(int productId);
 
-		string GetImageName(int id);
+		Task<string?> GetImageNameAsync(int productId);
 	}
 }

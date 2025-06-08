@@ -4,68 +4,71 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InternetShopAspNetCoreMvc.Data.Repositories
 {
-	public class ProductRepository : IProductRepository
+	public class ProductRepository(InternetShopDbContext context) : IProductRepository
 	{
-		private readonly InternetShopDbContext _context;
-
-		public ProductRepository(InternetShopDbContext context) 
+		public async Task<List<Product>> GetAllAsync()
 		{
-			_context = context;
+			return await context.Products.AsNoTracking().ToListAsync();
 		}
-
-		public void Add(Product product)
+		
+		public async Task<Product?> GetByIdAsync(int productId)
 		{
-			_context.Products.Add(product);
-			_context.SaveChanges();
+			return await context.Products
+				.AsNoTracking()
+				.Include(x => x.Category)
+				.FirstOrDefaultAsync(x => x.Id == productId);
 		}
-
-		public void Delete(int id)
+		
+		public async Task<Product> AddAsync(Product product)
 		{
-			var product = _context.Products.FirstOrDefault(p => p.Id == id);
+            ArgumentNullException.ThrowIfNull(product);
 
-			if (product != null)
-			{
-				_context.Products.Remove(product);
-				_context.SaveChanges();
-			}
+            await context.Products.AddAsync(product);
+			await context.SaveChangesAsync();
+			
+			return product;
 		}
-
-		public Product Edit(Product product)
+		
+		public async Task<Product?> UpdateAsync(Product product)
 		{
-			var existingProduct = _context.Products.FirstOrDefault(p => p.Id == product.Id);
+			ArgumentNullException.ThrowIfNull(product);
 
-			if (existingProduct != null)
-			{
-				existingProduct.Name = product.Name;
-				existingProduct.Description = product.Description;
-				existingProduct.Price = product.Price;
-				existingProduct.CategoryId = product.CategoryId;
-				existingProduct.Image = product.Image;
-				_context.SaveChanges();
-			}
+			var existingProduct = await context.Products.FindAsync(product.Id);
+			if (existingProduct == null) return null;
 
+			UpdateProductProperties(existingProduct, product);
+			await context.SaveChangesAsync();
+            
 			return existingProduct;
 		}
 
-		public List<Product> GetAll()
+		public async Task<bool> DeleteAsync(int productId)
 		{
-			// AsNoTracking -> если вы не будете делать изменения сущности из базы - стоит использовать эту функцию 
-			// и ef core не будет следить за изменениями объекта
-			// для GET
-			return _context.Products.AsNoTracking().ToList();
+			var product = await context.Products.FindAsync(productId);
+			if (product == null) return false;
+			
+			context.Products.Remove(product);
+			await context.SaveChangesAsync();
+
+			return true;
 		}
 
-		public Product GetById(int id)
+		public async Task<string?> GetImageNameAsync(int productId)
 		{
-			return _context.Products
-				.AsNoTracking()
-				.Include(x => x.Category)
-				.FirstOrDefault(x => x.Id == id);
-		}
+			return await context.Products
+				.Where(x => x.Id == productId)
+				.Select(x => x.Image)
+				.FirstOrDefaultAsync();
 
-		public string GetImageName(int id)
+		}
+		
+		private static void UpdateProductProperties(Product existing, Product updated)
 		{
-			return _context.Products.FirstOrDefault(x => x.Id==id)?.Image;
+			existing.Name = updated.Name;
+			existing.Description = updated.Description;
+			existing.Price = updated.Price;
+			existing.CategoryId = updated.CategoryId;
+			existing.Image = updated.Image;
 		}
 	}
 }

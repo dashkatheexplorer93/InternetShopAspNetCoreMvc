@@ -1,62 +1,108 @@
-﻿using InternetShopAspNetCoreMvc.Data;
-using InternetShopAspNetCoreMvc.Data.Interfaces;
+﻿using InternetShopAspNetCoreMvc.Data.Interfaces;
+using InternetShopAspNetCoreMvc.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InternetShopAspNetCoreMvc.UI.Controllers
 {
-    public class OrdersController : Controller
+    public class OrdersController(
+        IOrdersRepository ordersRepository,
+        ICartRepository cartRepository,
+        ILogger<OrdersController> logger)
+        : Controller
     {
-        private readonly InternetShopDbContext _context;
-        private readonly IOrdersRepository ordersRepository;
-        private readonly ICartRepository cartRepository;
         private const int UserId = 1;
+        private const decimal ShippingCost = 10m;
 
-        public OrdersController(InternetShopDbContext context, IOrdersRepository ordersRepository, ICartRepository cartRepository)
+        public async Task<IActionResult> IndexAsync()
         {
-            _context = context;
-            this.ordersRepository = ordersRepository;
-            this.cartRepository = cartRepository;
-        }
-
-        public async Task<IActionResult> Index()
-        {
-            return View(ordersRepository.GetUserOrdersWithDetails(UserId));
-        }
-
-        public IActionResult Details(int id)
-        {
-            var order = ordersRepository.GetOrderWithDetails(id);
-
-            if (order != null)
+            try
             {
-                return View(order);
+                var orders = await ordersRepository.GetOrdersByUserIdWithDetailsAsync(UserId);
+                return View(orders);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error retrieving orders for user {UserId}", UserId);
+                return Problem("Error retrieving orders");
             }
 
-            return View("DoesNotExist");
+        }
+
+        public async Task<IActionResult> DetailsAsync([FromRoute] int id)
+        {
+            if (id <= 0)
+            {
+                return BadRequest("Invalid order ID");
+            }
+
+            try
+            {
+                var order = await ordersRepository.GetOrderByIdWithDetailsAsync(id);
+                return order != null ? View(order) : View("DoesNotExist");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error retrieving order details for ID {OrderId}", id);
+                return Problem("Error retrieving order details");
+            }
+
         }
 
         [HttpGet]
-        public IActionResult PlaceOrder()
+        public async Task<IActionResult> PlaceOrderAsync()
         {
-            var cartItems = cartRepository.GetUserCartItems(UserId);
+            try
+            {
+                var cartItems = await cartRepository.GetByUserIdAsync(UserId);
+                
+                if (!cartItems.Any())
+                {
+                    return RedirectToAction("Index", "Cart");
+                }
 
-            ViewData["total"] = cartItems.Select(c => c.Product.Price * c.Quantity).Sum() + 10;
+                ViewData["total"] = CalculateOrderTotal(cartItems);
+                return View(cartItems);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error preparing order placement for user {UserId}", UserId);
+                return Problem("Error preparing order placement");
+            }
 
-            return View(cartItems);
         }
 
-        public async Task<IActionResult> PlaceOrderConfirmed()
+        public async Task<IActionResult> PlaceOrderConfirmedAsync()
         {
-            ordersRepository.ConfirmOrder(UserId);
-
-            return RedirectToAction("Index");
+            try
+            {
+                await ordersRepository.ConfirmOrderAsync(UserId);
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error confirming order for user {UserId}", UserId);
+                return Problem("Error processing your order");
+            }
         }
 
-        public IActionResult Manage()
+        public async Task<IActionResult> ManageAsync()
         {
-            var orders = ordersRepository.GetAllOrders();
+            try
+            {
+                var orders = await ordersRepository.GetAllOrdersAsync();
+                return View(orders);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error retrieving orders for management");
+                return Problem("Error retrieving orders");
 
-            return View(orders);
+            }
+        }
+        
+        private static decimal CalculateOrderTotal(IEnumerable<CartItem> cartItems)
+        {
+            return cartItems.Sum(c => c.Product.Price * c.Quantity) + ShippingCost;
         }
 	}
 }

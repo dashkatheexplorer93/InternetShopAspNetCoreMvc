@@ -4,16 +4,16 @@ namespace InternetShopAspNetCoreMvc.Data.Interfaces
 {
 	public interface ICartRepository
 	{
-		CartItem GetCartItem(int id);
+		Task<CartItem?> GetByIdAsync(int cartItemId);
 
-		List<CartItem> GetUserCartItems(int id);
+		Task<List<CartItem>> GetByUserIdAsync(int userId);
 
-		void AddToCart(CartItem item);
-
-		void DeleteUserCartItem(CartItem cartItem);
+		Task AddAsync(CartItem item);
 		
-		void DeleteAllUserCartItems(int userId);
+		Task UpdateAsync(CartItem item);
 
-		void EditCartItems(CartItem item);
+		Task DeleteAsync(CartItem cartItem);
+		
+		Task DeleteAllByUserIdAsync(int userId);
 	}
 }

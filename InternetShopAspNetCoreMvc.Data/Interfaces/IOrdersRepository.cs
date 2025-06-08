@@ -4,14 +4,14 @@ namespace InternetShopAspNetCoreMvc.Data.Interfaces
 {
 	public interface IOrdersRepository
 	{
-		List<Order> GetUserOrders(int id);
+		Task<List<Order>> GetOrdersByUserIdAsync(int userId);
 
-		List<Order> GetUserOrdersWithDetails(int id);
+		Task<List<Order>> GetOrdersByUserIdWithDetailsAsync(int userId);
 
-		Order GetOrderWithDetails(int id);
+		Task<Order?> GetOrderByIdWithDetailsAsync(int orderId);
 
-		List<Order> GetAllOrders();
+		Task<List<Order?>> GetAllOrdersAsync();
 
-		void ConfirmOrder(int userId);
+		Task ConfirmOrderAsync(int userId);
 	}
 }

@@ -19,14 +19,15 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
 
 		public async Task<IActionResult> Index()
 		{
-			return View(_cartRepository.GetUserCartItems(UserId));
+			var cartItems = await _cartRepository.GetByUserIdAsync(UserId);
+			return View(cartItems);
 		}
 
 		[HttpPost]
 		public IActionResult AddToCart(CartItem item)
 		{
 			item.UserId = UserId;
-            _cartRepository.AddToCart(item);
+            _cartRepository.AddAsync(item);
 			_notifyService.Success("Added to cart!");
 
 			return RedirectToAction("Index", "Products");
@@ -34,29 +35,25 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
 
 		public IActionResult EmptyCart()
 		{
-            _cartRepository.DeleteAllUserCartItems(UserId);
+            _cartRepository.DeleteAllByUserIdAsync(UserId);
             _notifyService.Success("Removed all from cart!");
 
             return RedirectToAction("Index");
 		}
 
 		[HttpGet]
-        public IActionResult Edit(int id)
+        public async Task<IActionResult> Edit(int id)
         {
-            var cartItem = _cartRepository.GetCartItem(id);
+            var cartItem = await _cartRepository.GetByIdAsync(id);
 
-            if (cartItem != null)
-            {
-                return View(cartItem);
-            }
-
-            return RedirectToAction("Index");
+            return View(cartItem);
+            // return RedirectToAction("Index");
         }
 
 		[HttpPost]
 		public IActionResult Edit(CartItem item) 
 		{
-            _cartRepository.EditCartItems(item);
+            _cartRepository.UpdateAsync(item);
             _notifyService.Success("Changed successfully!");
 
             return RedirectToAction("Index");
@@ -64,14 +61,11 @@ namespace InternetShopAspNetCoreMvc.UI.Controllers
 
         public async Task<IActionResult> Delete(int id)
 		{
-			var cartItem = _cartRepository.GetCartItem(id);
-
-			if (cartItem != null)
-			{
-                _cartRepository.DeleteUserCartItem(cartItem);
-                _notifyService.Success("Deleted successfully!");
-            }
-
+			var cartItem = await  _cartRepository.GetByIdAsync(id);
+			
+			await _cartRepository.DeleteAsync(cartItem); 
+			_notifyService.Success("Deleted successfully!");
+			
 			return RedirectToAction("Index");
 		}
 	}

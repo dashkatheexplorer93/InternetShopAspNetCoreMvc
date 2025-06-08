@@ -4,14 +4,14 @@ namespace InternetShopAspNetCoreMvc.Data.Interfaces
 {
 	public interface ICategoryRepository
 	{
-		List<Category> GetAll();
+		Task<IReadOnlyList<Category>> GetAllAsync();
 
-		Category GetById(int id);
+		Task<Category?> GetByIdAsync(int categoryId);
 
-		Category AddCategory(Category category);
+		Task<Category> AddAsync(Category category);
 
-		void Delete(int id);
+		Task DeleteAsync(int categoryId);
 
-		public Category Edit(Category category);
+		Task UpdateAsync(Category category);
 	}
 }

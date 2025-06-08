@@ -3,18 +3,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InternetShopAspNetCoreMvc.Data
 {
-	public class DbInitializer
+	public class DbInitializer(ModelBuilder modelBuilder)
 	{
-		private readonly ModelBuilder _modelBuilder;
-
-		public DbInitializer(ModelBuilder modelBuilder)
-		{
-			_modelBuilder = modelBuilder;
-		}
-
 		public void Seed()
 		{
-			_modelBuilder.Entity<User>(x =>
+			modelBuilder.Entity<User>(x =>
 			{
 				x.HasData(new User
 				{
